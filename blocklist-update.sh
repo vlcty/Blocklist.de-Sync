@@ -15,6 +15,7 @@ TO_DOWNLOAD[2]="http://lists.blocklist.de/lists/apache.txt"
 CHAINNAME="blocklist-de"
 ACTION="REJECT" # Can be DROP
 PRINT_REPORT=1
+IPTABLES_PATH="/sbin/iptables"
 
 ########## Do not edit anything below this line ##########
 
@@ -50,14 +51,14 @@ amountAfterSortAndUnique=`cat $fileFiltered | wc -l`
 #
 ## Create chain if it does not exist
 #
-iptables --new-chain $CHAINNAME >/dev/null 2>&1
+$IPTABLES_PATH --new-chain $CHAINNAME >/dev/null 2>&1
 
 # Insert rule (if necesarry) into INPUT chain so the chain above will also be used
-if [ `iptables -L INPUT | grep $CHAINNAME | wc -l` -eq 0 ]
+if [ `$IPTABLES_PATH -L INPUT | grep $CHAINNAME | wc -l` -eq 0 ]
 then
 
 	# Insert rule because it is not present
-	iptables -I INPUT -j $CHAINNAME
+	$IPTABLES_PATH -I INPUT -j $CHAINNAME
 
 fi
 
@@ -68,7 +69,7 @@ while read currentIP
 do
 
     # Check via command
-    iptables -C $CHAINNAME -s $currentIP -j $ACTION >/dev/null 2>&1
+    $IPTABLES_PATH -C $CHAINNAME -s $currentIP -j $ACTION >/dev/null 2>&1
 
     # Now we have to check the exit code of iptables via $?
     #
@@ -79,7 +80,7 @@ do
     then
 
         # Append the IP
-        iptables -A $CHAINNAME -s $currentIP -j $ACTION >/dev/null 2>&1
+        $IPTABLES_PATH -A $CHAINNAME -s $currentIP -j $ACTION >/dev/null 2>&1
 
         # Increment the counter
         amountInserted=$((amountInserted + 1))
@@ -96,14 +97,14 @@ do
     then
         # Delete the rule by its rulenumber
         # Because changing the action would result in errors
-        iptables -D $CHAINNAME -s $currentIP -j $ACTION >/dev/null 2>&1
+        $IPTABLES_PATH -D $CHAINNAME -s $currentIP -j $ACTION >/dev/null 2>&1
 
     # Increment the counter
     amountDeleted=$((amountDeleted + 1))
 
 fi
 
-done <<< "`iptables -n -L blocklist-de | awk '{print $4}'`"
+done <<< "`$IPTABLES_PATH -n -L blocklist-de | awk '{print $4}'`"
 
 ## Print report
 if [ $PRINT_REPORT -eq 1 ]
